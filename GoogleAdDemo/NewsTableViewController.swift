@@ -7,19 +7,101 @@
 //
 
 import UIKit
+import GoogleMobileAds
 
-class NewsTableViewController: UITableViewController {
+//Añadido en app delegate el import y la linea en didfinishlaunching GADMobileAds.configure(withApplicationID: "ca-app-pub-5391720206606263~7342666233")
+class NewsTableViewController: UITableViewController, GADBannerViewDelegate, GADInterstitialDelegate {
 
+    /*lazy var adBannerView: GADBannerView = {
+        let adBannerView = GADBannerView(adSize: kGADAdSizeSmartBannerPortrait)
+        adBannerView.adUnitID = "ca-app-pub-5391720206606263/8819399439" //Identificador del banner que se coge desde la web
+        adBannerView.delegate = self
+        adBannerView.rootViewController = self
+        
+        return adBannerView
+    }() //Con lazy la inicializará cuando tenga los valores para hacerlo 
+ */
+    var adBannerView: GADBannerView?
+    var interstitial: GADInterstitial?
+    
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem()
+        ////////////// SIN declararlo lazy
+        
+        adBannerView = GADBannerView(adSize: kGADAdSizeSmartBannerPortrait)
+        adBannerView?.adUnitID = "ca-app-pub-5391720206606263/8819399439" //Identificador del banner que se coge desde la web
+        adBannerView?.delegate = self
+        adBannerView?.rootViewController = self
+        //////////////////////
+        
+        adBannerView?.load(GADRequest())
+        
+        interstitial = createAndLoadInterstitial()
+        
     }
-
+    
+    func adViewDidReceiveAd(_ bannerView: GADBannerView!) { //Hemos recibido el anuncio correctamente
+        print("Banner se ha cargado correctamente")
+        
+        //Reposicionar el anuncio para moverlo hacia abajo
+        let translateTransform = CGAffineTransform(translationX: 0, y: -bannerView.bounds.size.height)
+        bannerView.transform = translateTransform
+        
+        UIView.animate(withDuration: 0.5) { 
+            bannerView.transform = CGAffineTransform.identity
+            
+            //Quitamos esto para hacrlo Sticky
+           // self.tableView.tableHeaderView?.frame = bannerView.frame
+           // self.tableView.tableHeaderView = bannerView
+        }
+        //Movido dentro de la animacion
+        //tableView.tableHeaderView?.frame = bannerView.frame
+        //tableView.tableHeaderView = bannerView
+    }
+    
+    func adView(_ bannerView: GADBannerView!, didFailToReceiveAdWithError error: GADRequestError!) { //No hemos recibido correctamente el anuncio
+        print("Error al cargar el banner")
+        print(error)
+        
+    }
+    
+    //Para haver el banner permanente y no se mueva
+    /////////////////////////
+    override func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        return adBannerView //Con esto le decimos que metemos el bannr en el header
+    }
+    
+    override func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return adBannerView!.frame.height //Como el header el header es muy pequeño el header no va a crecer. Con esto le decimos que crezca
+    }
+    /////////////////////////
+    
+    
+    func interstitialDidReceiveAd(_ ad: GADInterstitial!) { //Si recibió el interstitial
+        print("Interstitial recibido")
+        ad.present(fromRootViewController: self)
+    }
+    
+    func interstitialDidFail(toPresentScreen ad: GADInterstitial!) { //Si fallo en la recepcion
+        print("Error al carhar el interstitial")
+    }
+    func createAndLoadInterstitial() -> GADInterstitial? {
+        
+    interstitial = GADInterstitial(adUnitID: "ca-app-pub-5391720206606263/4609525839")
+        guard let interstitial = interstitial else { return nil }
+        let request = GADRequest ()
+        //Para probarlos en el simulador hay que especificarlo
+            //Eliminar esta linea antes de subir a la AppStore
+        
+        request.testDevices = [kGADSimulatorID]
+        interstitial.load(request)
+        interstitial.delegate = self
+        return interstitial
+        
+    }
+    
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
